@@ -80,6 +80,20 @@ window.addEventListener("message", event => {
 // ---------- Draw Table ----------
 function drawTable(){
 
+  console.log("drawTable");
+
+  drawBreadcrumb();
+
+  let tbody = document.querySelector("#taskTable tbody");
+
+  console.log("tbody =", tbody);
+
+  tbody.innerHTML="";
+
+  let items = getCurrentItems();
+
+  console.log("items =", items);
+
   drawBreadcrumb();
 
   let tbody = document.querySelector("#taskTable tbody");

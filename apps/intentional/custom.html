@@ -3,7 +3,6 @@
 <link rel="stylesheet" href="../../css/spectre.min.css">
 
 <style>
-.dragrow { cursor:move; }
 .folder { font-weight:bold; }
 .breadcrumb { margin-bottom:10px; }
 </style>
@@ -19,7 +18,7 @@
 <table class="table" id="taskTable">
 <thead>
 <tr>
-<th></th>
+<th>#</th>
 <th>Name</th>
 <th>Target</th>
 <th></th>
@@ -64,7 +63,6 @@
 
 let data = {items:[]};
 let path = [];
-let dragIndex = null;
 let installedApps = [];
 
 window.addEventListener("message", event => {
@@ -88,22 +86,25 @@ function drawTable(){
   tbody.innerHTML="";
 
   let items = getCurrentItems();
+  items.forEach((item,i)=>{
+  if (item.order === undefined)
+    item.order = i + 1;
+});
 
   items.forEach((item,i)=>{
-
-    let row = document.createElement("tr");
-    row.className="dragrow";
-    row.draggable=true;
-
-    row.ondragstart = ()=>dragIndex=i;
-    row.ondragover = e=>e.preventDefault();
-    row.ondrop = ()=>dropRow(i);
-
 
     if(item.type==="task"){
 
       row.innerHTML=`
-      <td>☰</td>
+      <td>
+      <input
+        type="number"
+        min="1"
+        style="width:60px"
+        class="form-input"
+        value="${item.order||i+1}"
+        onchange="getCurrentItems()[${i}].order=parseInt(this.value)||0">
+      </td>
       <td><input class="form-input" value="${item.name||""}" onchange="getCurrentItems()[${i}].name=this.value"></td>
       <td><input class="form-input" value="${item.intent||""}" onchange="getCurrentItems()[${i}].intent=this.value"></td>
       <td><button class="btn btn-error btn-sm" onclick="removeItem(${i})">Delete</button></td>
@@ -115,7 +116,15 @@ function drawTable(){
 if(item.type==="folder"){
 
   row.innerHTML=`
-  <td>☰</td>
+      <td>
+      <input
+        type="number"
+        min="1"
+        style="width:60px"
+        class="form-input"
+        value="${item.order||i+1}"
+        onchange="getCurrentItems()[${i}].order=parseInt(this.value)||0">
+      </td>
 
   <td>
     <input class="form-input"
@@ -144,7 +153,15 @@ if(item.type==="folder"){
 if(item.type==="separator"){
 
   row.innerHTML=`
-  <td>☰</td>
+      <td>
+      <input
+        type="number"
+        min="1"
+        style="width:60px"
+        class="form-input"
+        value="${item.order||i+1}"
+        onchange="getCurrentItems()[${i}].order=parseInt(this.value)||0">
+      </td>
 
   <td>
     <input class="form-input"
@@ -166,7 +183,15 @@ if(item.type==="separator"){
 if(item.type==="app"){
 
   row.innerHTML=`
-  <td>☰</td>
+      <td>
+      <input
+        type="number"
+        min="1"
+        style="width:60px"
+        class="form-input"
+        value="${item.order||i+1}"
+        onchange="getCurrentItems()[${i}].order=parseInt(this.value)||0">
+      </td>
 
   <td>
   <input class="form-input"
@@ -334,6 +359,64 @@ function downloadJSONfile(fileid, callback) {
   });
 }
 
+// ---------- sort elements ----------
+function validateOrder(items){
+
+  let used = {};
+
+  for (let item of items) {
+
+    if (used[item.order]) {
+
+      alert(
+        "Duplicate order numbers found.\n\n" +
+        "Each item must have a unique position."
+      );
+
+      return false;
+    }
+
+    used[item.order] = true;
+  }
+
+  return true;
+}  
+
+// ---------- Sort elements ----------
+
+function sortItems(items){
+
+  if (!validateOrder(items))
+    return false;
+
+  items.sort((a,b)=>
+    (a.order||0) - (b.order||0)
+  );
+
+  items.forEach(item => {
+
+    if (item.items)
+      sortItems(item.items);
+
+  });
+
+  return true;
+}  
+
+
+
+function removeOrderFields(items){
+
+  items.forEach(item => {
+
+    delete item.order;
+
+    if (item.items)
+      removeOrderFields(item.items);
+
+  });
+
+}  
 // ---------- Utility ----------
 function getCurrentItems(){
 
@@ -368,18 +451,6 @@ function drawBreadcrumb(){
   });
 
   bc.innerHTML = html;
-}
-
-
-// ---------- Drag Sorting ----------
-function dropRow(newIndex){
-
-  let items = getCurrentItems();
-
-  let item = items.splice(dragIndex,1)[0];
-  items.splice(newIndex,0,item);
-
-  drawTable();
 }
 
 
@@ -482,11 +553,19 @@ function removeItem(i){
 // ---------- Upload ----------
 function upload(){
 
+  let copy =
+    JSON.parse(JSON.stringify(data));
+
+  if (!sortItems(copy.items))
+    return;
+
+  removeOrderFields(copy.items);
+
   sendCustomizedApp({
     storage:[
       {
         name:"intentional.json",
-        content:JSON.stringify(data)
+        content:JSON.stringify(copy)
       }
     ]
   });

@@ -94,16 +94,10 @@ function drawTable(){
 
   console.log("items =", items);
 
-  drawBreadcrumb();
-
-  let tbody = document.querySelector("#taskTable tbody");
-  tbody.innerHTML="";
-
-  let items = getCurrentItems();
   items.forEach((item,i)=>{
-  if (item.order === undefined)
-    item.order = i + 1;
-});
+    if (item.order === undefined)
+      item.order = i + 1;
+  });
 
   items.forEach((item,i)=>{
     let row = document.createElement("tr");
@@ -266,7 +260,29 @@ function gotStored(stored) {
   if (!data.items)
     data = { items: [] };
 
+  normalizeAndSort(data.items);
+
   drawTable();
+}
+
+// ---------- Normalize + Sort on load ----------
+// Ensures every item has an order (defaulting to its current
+// position), then sorts each list (and nested folders) by that
+// order so the table always reflects the saved order on load.
+function normalizeAndSort(items){
+
+  items.forEach((item,i)=>{
+    if (item.order === undefined)
+      item.order = i + 1;
+  });
+
+  items.sort((a,b) => (a.order||0) - (b.order||0));
+
+  items.forEach(item => {
+    if (item.items)
+      normalizeAndSort(item.items);
+  });
+
 }
 
 function getLaunchableApps() {
@@ -300,8 +316,12 @@ function getLaunchableApps() {
 // ---------- download/Load Json ----------
 function downloadJSON() {
 
+  let copy = prepareSortedCopy();
+
+  if (!copy) return;
+
   const blob = new Blob(
-    [JSON.stringify(data, null, 2)],
+    [JSON.stringify(copy, null, 2)],
     { type: "application/json" }
   );
 
@@ -333,6 +353,8 @@ function downloadJSON() {
         throw new Error("Invalid format");
 
       data = imported;
+
+      normalizeAndSort(data.items);
 
       drawTable();
 
@@ -430,7 +452,25 @@ function removeOrderFields(items){
 
   });
 
-}  
+}
+
+// ---------- Shared save prep ----------
+// Validates order numbers (no duplicates at any level), sorts
+// every list by order, then strips the order field so the saved
+// intentional.json matches the expected format (order = array
+// position). Returns null if validation fails, so callers can
+// abort the save.
+function prepareSortedCopy(){
+
+  let copy = JSON.parse(JSON.stringify(data));
+
+  if (!sortItems(copy.items))
+    return null;
+
+  removeOrderFields(copy.items);
+
+  return copy;
+}
 // ---------- Utility ----------
 function getCurrentItems(){
 
@@ -567,13 +607,9 @@ function removeItem(i){
 // ---------- Upload ----------
 function upload(){
 
-  let copy =
-    JSON.parse(JSON.stringify(data));
+  let copy = prepareSortedCopy();
 
-  if (!sortItems(copy.items))
-    return;
-
-  removeOrderFields(copy.items);
+  if (!copy) return;
 
   sendCustomizedApp({
     storage:[

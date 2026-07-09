@@ -1,0 +1,7 @@
+require("Storage").write("oregonclock.info",{
+  "id":"oregonclock",
+  "name":"oregonclock",
+  "src":"oregonclock.app.js",
+  "type":"clock",
+  "icon":"oregonclock.png"
+});

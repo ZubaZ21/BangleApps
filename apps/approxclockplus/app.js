@@ -58,11 +58,11 @@ function drawTime() {
   // LEVEL 1
   } else if (level === 1) {
 
-    if (hour < 6) {
+    if (hour < 8) {
       text = "Night";
-    } else if (hour < 12) {
+    } else if (hour < 10) {
       text = "Morning";
-    } else if (hour < 18) {
+    } else if (hour < 19) {
       text = "Day";
     } else {
       text = "Evening";
